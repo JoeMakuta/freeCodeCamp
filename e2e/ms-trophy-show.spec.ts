@@ -3,7 +3,7 @@ import translations from '../client/i18n/locales/english/translations.json';
 
 const verifyTrophyButtonText = translations.buttons['verify-trophy'];
 const askForHelpButtonText = translations.buttons['ask-for-help'];
-
+test.use({ storageState: { cookies: [], origins: [] } });
 test.beforeEach(async ({ page }) => {
   await page.goto(
     '/learn/foundational-c-sharp-with-microsoft/write-your-first-code-using-c-sharp/trophy-write-your-first-code-using-c-sharp'
@@ -43,7 +43,7 @@ test('Correct Ask for help button', async ({ page }) => {
   await checkAnswerButton.click();
   await expect(
     page.getByRole('heading', {
-      name: translations.buttons['ask-for-help'],
+      name: translations.buttons['get-help'],
       exact: true
     })
   ).toBeVisible();

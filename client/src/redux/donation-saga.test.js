@@ -1,4 +1,9 @@
+// All tests use expectSaga which the eslint-plugin-vitest plugin does not
+// recognize
+/* eslint-disable vitest/expect-expect */
+// @vitest-environment jsdom
 import { expectSaga } from 'redux-saga-test-plan';
+import { describe, it, vi } from 'vitest';
 import {
   postChargeStripe,
   postChargeStripeCard,
@@ -18,11 +23,11 @@ import {
   updateCardError
 } from './actions';
 
-jest.mock('../utils/ajax');
-jest.mock('../analytics/call-ga');
-jest.mock('../utils/stripe', () => ({
+vi.mock('../utils/ajax');
+vi.mock('../analytics/call-ga');
+vi.mock('../utils/stripe', () => ({
   stripe: Promise.resolve({
-    redirectToCheckout: jest.fn()
+    redirectToCheckout: vi.fn()
   })
 }));
 
@@ -32,7 +37,7 @@ const postChargeDataMock = {
     paymentContext: 'donate page',
     amount: '500',
     duration: 'month',
-    handleAuthentication: jest.fn(),
+    handleAuthentication: vi.fn(),
     paymentMethodId: '123456'
   }
 };
@@ -49,10 +54,8 @@ const analyticsDataMock = {
 
 const signedInStoreMock = {
   app: {
-    appUsername: 'devuser',
-    completionCount: 2,
     user: {
-      devuser: {
+      sessionUser: {
         completedChallenges: [
           {
             id: 'bd7123c8c441eddfaeb5bdef',
@@ -82,18 +85,17 @@ const signedInStoreMock = {
 
 const signedOutStoreMock = {
   app: {
-    appUsername: '',
-    completionCount: 0,
     user: {
-      '': {
-        completedChallenges: []
-      }
+      sessionUser: null
     }
   }
 };
 
 describe('donation-saga', () => {
   it('calls postChargeStrip for Stripe', () => {
+    // The number of completed challenges per session is stored in the session storage
+    sessionStorage.setItem('session-completed-challenges', '2');
+
     return expectSaga(postChargeSaga, postChargeDataMock)
       .withState(signedInStoreMock)
       .put(postChargeProcessing())
@@ -149,6 +151,8 @@ describe('donation-saga', () => {
       payload: { ...postChargeDataMock.payload, paymentProvider: 'paypal' }
     };
 
+    sessionStorage.setItem('session-completed-challenges', '0');
+
     const paypalAnalyticsDataMock = {
       ...analyticsDataMock,
       action: 'Donate Page Paypal Payment Submission',
@@ -159,12 +163,8 @@ describe('donation-saga', () => {
 
     const signedOutStoreMock = {
       app: {
-        appUsername: '',
-        completionCount: 0,
         user: {
-          '': {
-            completedChallenges: []
-          }
+          sessionUser: null
         }
       }
     };

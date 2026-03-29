@@ -4,24 +4,28 @@ import translations from '../client/i18n/locales/english/translations.json';
 test.describe('Tool Panel', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(
-      '/learn/javascript-algorithms-and-data-structures/basic-javascript/increment-a-number-with-javascript'
+      '/learn/responsive-web-design/responsive-web-design-principles/create-a-media-query'
     );
   });
   test('should display "//running tests" in console after clicking "Run the Tests (Ctrl+Enter)" button', async ({
     page,
     isMobile
   }) => {
-    await page
-      .getByRole('button', {
-        name: 'Run the Test'
-      })
-      .click();
-
     if (isMobile) {
+      await page
+        .getByRole('button', {
+          name: 'Run',
+          exact: false
+        })
+        .click();
       await page
         .getByRole('tab', {
           name: 'Console'
         })
+        .click();
+    } else {
+      await page
+        .getByRole('button', { name: translations.buttons['check-code'] })
         .click();
     }
 
@@ -40,7 +44,7 @@ test.describe('Tool Panel', () => {
         .click();
     } else {
       await page
-        .getByRole('button', { name: translations.buttons['reset-lesson'] })
+        .getByRole('button', { name: translations.buttons.reset })
         .click();
     }
     await expect(
@@ -49,8 +53,10 @@ test.describe('Tool Panel', () => {
   });
 
   test('should display list with expected links after clicking "Get Help"', async ({
-    page
+    page,
+    isMobile
   }) => {
+    test.skip(!isMobile, 'Help dropdown only available on mobile');
     const expectedHelpLinks = [
       `${translations.buttons['get-hint']} , ${translations.aria['opens-new-window']}`,
       translations.buttons['watch-video'],
@@ -68,7 +74,7 @@ test.describe('Tool Panel', () => {
     const hintLink = page.getByRole('menuitem', { name: 'Get a Hint' });
     await expect(hintLink).toHaveAttribute(
       'href',
-      'https://forum.freecodecamp.org/t/18201'
+      'https://forum.freecodecamp.org/t/301139'
     );
     await expect(hintLink).toHaveAttribute('target', '_blank');
 

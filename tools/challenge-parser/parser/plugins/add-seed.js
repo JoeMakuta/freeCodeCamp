@@ -1,7 +1,7 @@
 const { isEmpty } = require('lodash');
 const { root } = require('mdast-builder');
 const visitChildren = require('unist-util-visit-children');
-const getAllBetween = require('./utils/between-headings');
+const { getSection } = require('./utils/get-section');
 const { getFileVisitor } = require('./utils/get-file-visitor');
 
 const editableRegionMarker = '--fcc-editable-region--';
@@ -33,27 +33,22 @@ function removeLines(contents, toRemove) {
 // TODO: DRY this.  Start with an array of markers and go from there.
 function addSeeds() {
   function transformer(tree, file) {
-    const seedTree = root(getAllBetween(tree, `--seed--`));
+    const seedTree = root(getSection(tree, `--seed--`));
     // Not all challenges have seeds (video challenges, for example), so we stop
     // processing in these cases.
     if (isEmpty(seedTree.children)) return;
-    const contentsTree = root(getAllBetween(seedTree, `--seed-contents--`));
-    const headTree = root(getAllBetween(seedTree, `--before-user-code--`));
-    const tailTree = root(getAllBetween(seedTree, `--after-user-code--`));
+    const contentsTree = root(getSection(seedTree, `--seed-contents--`));
     const seeds = {};
 
-    // While before and after code are optional, the contents are not
+    // Seed contents are required.
     if (isEmpty(contentsTree.children))
       throw Error('## --seed-contents-- must appear in # --seed-- sections');
 
     const visitForContents = visitChildren(
       getFileVisitor(seeds, 'contents', validateEditableMarkers)
     );
-    const visitForHead = visitChildren(getFileVisitor(seeds, 'head'));
-    const visitForTail = visitChildren(getFileVisitor(seeds, 'tail'));
     visitForContents(contentsTree);
-    visitForHead(headTree);
-    visitForTail(tailTree);
+
     const seedVals = Object.values(seeds);
     file.data = {
       ...file.data,

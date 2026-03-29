@@ -1,11 +1,17 @@
-const { isObject } = require('lodash');
-const editableSolutionAST = require('../__fixtures__/ast-erm-in-solution.json');
-const multiSolnsAST = require('../__fixtures__/ast-multiple-solutions.json');
-const mockAST = require('../__fixtures__/ast-simple.json');
-
-const addSolution = require('./add-solution');
+import { describe, beforeAll, beforeEach, it, expect } from 'vitest';
+import { isObject } from 'lodash';
+import parseFixture from '../__fixtures__/parse-fixture';
+import addSolution from './add-solution';
 
 describe('add solution plugin', () => {
+  let mockAST, multiSolnsAST, editableSolutionAST;
+
+  beforeAll(async () => {
+    editableSolutionAST = await parseFixture('with-erm-in-solution.md');
+    mockAST = await parseFixture('simple.md');
+    multiSolnsAST = await parseFixture('with-multiple-solns.md');
+  });
+
   const plugin = addSolution();
   let file = { data: {} };
 
@@ -34,23 +40,19 @@ describe('add solution plugin', () => {
   });
 
   it('adds solution objects to the challengeFiles array following a schema', () => {
-    expect.assertions(13);
+    expect.assertions(9);
     plugin(mockAST, file);
     const {
       data: { solutions }
     } = file;
     const testObject = solutions[0].find(solution => solution.ext === 'js');
-    expect(Object.keys(testObject).length).toEqual(6);
+    expect(Object.keys(testObject).length).toEqual(4);
     expect(testObject).toHaveProperty('ext');
     expect(typeof testObject['ext']).toBe('string');
     expect(testObject).toHaveProperty('name');
     expect(typeof testObject['name']).toBe('string');
     expect(testObject).toHaveProperty('contents');
     expect(typeof testObject['contents']).toBe('string');
-    expect(testObject).toHaveProperty('head');
-    expect(typeof testObject['head']).toBe('string');
-    expect(testObject).toHaveProperty('tail');
-    expect(typeof testObject['tail']).toBe('string');
     expect(testObject).toHaveProperty('id');
     expect(typeof testObject['id']).toBe('string');
   });

@@ -1,28 +1,44 @@
-/* eslint-disable @typescript-eslint/no-base-to-string */
-import ObjectID from 'bson-objectid';
+import { ObjectId } from 'bson';
+import type { ChallengeLang } from '@freecodecamp/shared/config/curriculum';
 
 const sanitizeTitle = (title: string) => {
   return title.includes(':') || title.includes("'") ? `"${title}"` : title;
 };
 
-export interface ChallengeOptions {
-  challengeId: ObjectID;
+interface ChallengeOptions {
+  challengeId: ObjectId;
   title: string;
   dashedName: string;
   challengeType: string;
+  questionCount?: number;
+  challengeLang?: ChallengeLang;
+  inputType?: string;
 }
 
 const buildFrontMatter = ({
   challengeId,
   title,
   dashedName,
-  challengeType
-}: ChallengeOptions) => `---
+  challengeType,
+  challengeLang,
+  inputType
+}: ChallengeOptions) => {
+  const langString = challengeLang
+    ? `
+lang: ${challengeLang}`
+    : '';
+  const inputTypeString = inputType
+    ? `
+inputType: ${inputType}`
+    : '';
+
+  return `---
 id: ${challengeId.toString()}
 title: ${sanitizeTitle(title)}
 challengeType: ${challengeType}
-dashedName: ${dashedName}
+dashedName: ${dashedName}${langString}${inputTypeString}
 ---`;
+};
 
 const buildFrontMatterWithVideo = ({
   challengeId,
@@ -37,20 +53,7 @@ challengeType: ${challengeType}
 dashedName: ${dashedName}
 ---`;
 
-const buildFrontMatterWithAudio = ({
-  challengeId,
-  title,
-  dashedName,
-  challengeType
-}: ChallengeOptions) => `---
-id: ${challengeId.toString()}
-title: ${sanitizeTitle(title)}
-challengeType: ${challengeType}
-dashedName: ${dashedName}
-audioPath: Add the path to the audio file here. Or, delete this if you don't have audio.
----`;
-
-export const getLegacyChallengeTemplate = (
+const getLegacyChallengeTemplate = (
   options: ChallengeOptions
 ): string => `${buildFrontMatter(options)}
 
@@ -83,38 +86,115 @@ Test 1
 \`\`\`
 `;
 
-export const getQuizChallengeTemplate = (
-  options: ChallengeOptions
-): string => `${buildFrontMatter(options)}
+const getQuizChallengeTemplate = (options: ChallengeOptions): string => {
+  const count = options.questionCount!;
+
+  const regularQuestion = `### --question--
+
+#### --text--
+
+Placeholder question
+
+#### --distractors--
+
+Placeholder distractor 1
+
+---
+
+Placeholder distractor 2
+
+---
+
+Placeholder distractor 3
+
+#### --answer--
+
+Placeholder answer
+
+`;
+
+  const questionWithAudio = `### --question--
+
+#### --text--
+
+Placeholder question
+
+#### --audio--
+
+\`\`\`json
+{
+  "audio": {
+    "filename": "1.1-1.mp3",
+    "startTimestamp": 5.7,
+    "finishTimestamp": 6.48
+  },
+  "transcript": [
+    {
+      "character": "Tom",
+      "text": "Hi, I'm Tom."
+    }
+  ]
+}
+\`\`\`
+
+#### --distractors--
+
+Placeholder distractor 1
+
+---
+
+Placeholder distractor 2
+
+---
+
+Placeholder distractor 3
+
+#### --answer--
+
+Placeholder answer
+
+`;
+
+  const firstQuestion = options.challengeLang
+    ? questionWithAudio
+    : regularQuestion;
+
+  return `${buildFrontMatter(options)}
 
 # --description--
 
-${options.title} description.
+To pass the quiz, you must correctly answer at least ${count == 20 ? '18' : '9'} of the ${count.toString()} questions below.
 
-# --question--
+# --quizzes--
 
-## --text--
+## --quiz--
 
-${options.title} question?
+${firstQuestion}${regularQuestion.repeat(Math.max(0, count - 2))}
+### --question--
 
-## --answers--
+#### --text--
 
-Answer 1
+Placeholder question
+
+#### --distractors--
+
+Placeholder distractor 1
 
 ---
 
-Answer 2
+Placeholder distractor 2
 
 ---
 
-Answer 3
+Placeholder distractor 3
 
-## --video-solution--
+#### --answer--
 
-1
+Placeholder answer
 `;
+};
 
-export const getVideoChallengeTemplate = (
+const getVideoChallengeTemplate = (
   options: ChallengeOptions
 ): string => `${buildFrontMatterWithVideo(options)}
 
@@ -145,7 +225,7 @@ Answer 3
 1
 `;
 
-export const getAssignmentChallengeTemplate = (
+const getAssignmentChallengeTemplate = (
   options: ChallengeOptions
 ): string => `${buildFrontMatter(options)}
 
@@ -153,11 +233,11 @@ export const getAssignmentChallengeTemplate = (
 
 ${options.title} description.
 
-# --question--
-
-## --assignment--
+# --assignment--
 
 ${options.title} assignment!
+
+# --question--
 
 ## --text--
 
@@ -180,15 +260,33 @@ Answer 3
 1
 `;
 
-export const getMultipleChoiceChallengeTemplate = (
+const getMultipleChoiceChallengeTemplate = (
   options: ChallengeOptions
-): string => `${buildFrontMatterWithAudio(options)}
+): string => {
+  const correctAnswerIndex = Math.floor(Math.random() * 4) + 1;
+  const feedback = (index: number) =>
+    index === correctAnswerIndex
+      ? ''
+      : `
+### --feedback--
+
+Include feedback for answer ${index} here.
+`;
+
+  const answers = [1, 2, 3, 4]
+    .map(
+      index => `Answer ${index}
+${feedback(index)}`
+    )
+    .join('\n---\n\n');
+
+  return `${buildFrontMatter(options)}
 
 # --description--
 
 ${options.title} description.
 
-# --question--
+# --questions--
 
 ## --text--
 
@@ -196,24 +294,16 @@ ${options.title} question?
 
 ## --answers--
 
-Answer 1
-
----
-
-Answer 2
-
----
-
-Answer 3
-
+${answers}
 ## --video-solution--
 
-1
+${correctAnswerIndex}
 `;
+};
 
-export const getFillInTheBlankChallengeTemplate = (
+const getFillInTheBlankChallengeTemplate = (
   options: ChallengeOptions
-): string => `${buildFrontMatterWithAudio(options)}
+): string => `${buildFrontMatter(options)}
 
 # --description--
 
@@ -223,7 +313,7 @@ ${options.title} description.
 
 ## --sentence--
 
-\`Fill _ the _ sentence.\`
+\`Fill BLANK the BLANK sentence.\`
 
 ## --blanks--
 
@@ -238,17 +328,166 @@ It's \`in\`
 \`blank\`
 `;
 
-export const getDialogueChallengeTemplate = (
+const getDialogueChallengeTemplate = (
   options: ChallengeOptions
-): string => `${buildFrontMatterWithVideo(options)}
+): string => `${buildFrontMatter(options)}
 
 # --description--
 
-${options.title} description.
+Watch the video below to understand the context of the upcoming lessons.
 
-## --assignment--
+# --assignment--
 
-${options.title} assignment!
+Watch the video.
+
+# --scene--
+
+\`\`\`json
+{
+  "setup": {
+    "background": "chaos.png",
+    "characters": [
+      {
+        "character": "David",
+        "position": {"x":50,"y":80,"z":8},
+        "opacity": 0
+      }
+    ],
+    "audio": {
+      "filename": "1.1-1.mp3",
+      "startTime": 1,
+      "startTimestamp": 5.7,
+      "finishTimestamp": 6.48
+    }
+  },
+  "commands": [
+    {
+      "character": "David",
+      "opacity": 1,
+      "startTime": 0
+    },
+    {
+      "character": "David",
+      "startTime": 1,
+      "finishTime": 0.78,
+      "dialogue": {
+        "text": "I'm Tom.",
+        "align": "center"
+      }
+    },
+    {
+      "character": "Tom",
+      "opacity": 0,
+      "startTime": 1.28
+    }
+  ]
+}
+\`\`\`
+`;
+
+const getGenericChallengeTemplate = (
+  options: ChallengeOptions
+): string => `${buildFrontMatter(options)}
+
+# --description--
+
+Generic challenge description.
+
+# --assignment--
+
+Do the assignment.
+`;
+
+interface DailyCodingChallengeOptions {
+  challengeId: ObjectId;
+  challengeNumber: number;
+}
+
+export const getDailyJavascriptChallengeTemplate = ({
+  challengeId,
+  challengeNumber
+}: DailyCodingChallengeOptions) => `---
+id: ${challengeId.toString()}
+title: "Challenge ${challengeNumber}: Placeholder"
+challengeType: 28
+dashedName: challenge-${challengeNumber}
+---
+
+# --description--
+
+Placeholder description
+
+# --hints--
+
+Placeholder test
+
+\`\`\`js
+assert.isTrue(true);
+\`\`\`
+
+# --seed--
+
+## --seed-contents--
+
+\`\`\`js
+function placeholder(arg) {
+
+  return arg;
+}
+\`\`\`
+
+# --solutions--
+
+\`\`\`js
+function placeholder(arg) {
+
+  return arg;
+}
+\`\`\`
+`;
+
+export const getDailyPythonChallengeTemplate = ({
+  challengeId,
+  challengeNumber
+}: DailyCodingChallengeOptions) => `---
+id: ${challengeId.toString()}
+title: "Challenge ${challengeNumber}: Placeholder"
+challengeType: 29
+dashedName: challenge-${challengeNumber}
+---
+
+# --description--
+
+Placeholder description
+
+# --hints--
+
+Placeholder test
+
+\`\`\`js
+({test: () => { runPython(\`
+from unittest import TestCase
+TestCase().assertTrue(True)\`)
+}})
+\`\`\`
+
+# --seed--
+
+## --seed-contents--
+
+\`\`\`py
+def placeholder(arg):
+
+    return arg
+\`\`\`
+
+# --solutions--
+
+\`\`\`py
+def placeholder(arg):
+
+    return arg
+\`\`\`
 `;
 
 type Template = (opts: ChallengeOptions) => string;
@@ -296,5 +535,7 @@ const challengeTypeToTemplate: {
   19: getMultipleChoiceChallengeTemplate,
   20: null,
   21: getDialogueChallengeTemplate,
-  22: getFillInTheBlankChallengeTemplate
+  22: getFillInTheBlankChallengeTemplate,
+  23: null,
+  24: getGenericChallengeTemplate
 };

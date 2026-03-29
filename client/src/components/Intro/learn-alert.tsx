@@ -1,9 +1,11 @@
 import React from 'react';
-import { Alert } from '@freecodecamp/ui';
+import { Spacer } from '@freecodecamp/ui';
 import { useFeature } from '@growthbook/growthbook-react';
 import { useTranslation } from 'react-i18next';
-import { Link, Spacer } from '../helpers';
+
+import { Link } from '../helpers';
 import { ProgressBar } from '../Progress/progress-bar';
+import './learn-alert.css';
 
 interface LearnAlertProps {
   onLearnDonationAlertClick: () => void;
@@ -19,22 +21,26 @@ const LearnAlert = ({
   const progressAlertFlag2024 = useFeature('progress-alert-2024');
   const createUniversityFlag = useFeature('university-alert');
   const progressAlertDefault = (text: string, value?: number) => (
-    <Alert variant='info' className='annual-donation-alert'>
+    <div className='learn-alert annual-donation-alert'>
       {value && (
         <>
+          <div className='text-center'>
+            <h2>{t('learn.donation-heading')}</h2>
+            <Spacer size='xs' />
+            <b className='m-0 progress-percent-value'>{`${value}%`}</b>
+          </div>
           <div aria-hidden='true' className='progress-wrapper'>
             <div>
               <ProgressBar now={value} />
             </div>
           </div>
-          <h3 className='text-center'>{`${value}%`}</h3>
         </>
       )}
       <p>{text}</p>
-      <hr />
-      <p className={'text-center'}>
+      <Spacer size='m' />
+      <p className={'btn-container'}>
         <Link
-          className='btn'
+          className='btn donate-button'
           key='donate'
           sameTab={false}
           to='/donate'
@@ -43,19 +49,19 @@ const LearnAlert = ({
           {t('buttons.donate')}
         </Link>
       </p>
-    </Alert>
+    </div>
   );
 
   const seasonalAlertFlagAlert = (
-    <Alert variant='info' className='annual-donation-alert'>
+    <div className='learn-alert annual-donation-alert'>
       <p>
         <b>{t('learn.season-greetings-fcc')}</b>
       </p>
       <p>{t('learn.if-getting-value')}</p>
       <hr />
-      <p className={'text-center'}>
+      <p className='btn-container'>
         <Link
-          className='btn'
+          className='btn donate-button'
           key='donate'
           sameTab={false}
           to='/donate'
@@ -64,7 +70,7 @@ const LearnAlert = ({
           {t('buttons.donate')}
         </Link>
       </p>
-    </Alert>
+    </div>
   );
 
   const progressAlert2024 = progressAlertDefault(
@@ -73,15 +79,15 @@ const LearnAlert = ({
   );
 
   const universityAlert = (
-    <Alert variant='info' className='university-alert'>
+    <div className='learn-alert university-alert'>
       <p>
         <b>{t('learn.building-a-university')}</b>
       </p>
       <p>{t('learn.if-help-university')}</p>
-      <Spacer size='medium' />
-      <p className={'text-center'}>
+      <Spacer size='m' />
+      <p className='btn-container text-center'>
         <Link
-          className='btn'
+          className='btn donate-button'
           key='donate'
           sameTab={false}
           to='/donate'
@@ -90,7 +96,7 @@ const LearnAlert = ({
           {t('buttons.donate')}
         </Link>
       </p>
-    </Alert>
+    </div>
   );
 
   if (!isDonating) {

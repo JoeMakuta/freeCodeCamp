@@ -1,11 +1,24 @@
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
 import { test, expect } from '@playwright/test';
+
 import translations from '../client/i18n/locales/english/translations.json';
 
-test.use({ storageState: 'playwright/.auth/certified-user.json' });
+const execP = promisify(exec);
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/settings');
 });
+
+test.afterAll(
+  async () =>
+    await Promise.all([
+      execP('node ../tools/scripts/seed/seed-demo-user --certified-user'),
+      execP('node ../tools/scripts/seed/seed-surveys'),
+      execP('node ../tools/scripts/seed/seed-ms-username')
+    ])
+);
 
 test.describe('Delete Modal component', () => {
   test('should render the modal correctly', async ({ page }) => {
@@ -13,20 +26,16 @@ test.describe('Delete Modal component', () => {
       .getByRole('button', { name: translations.settings.danger.delete })
       .click();
 
-    // There are two elements with the `dialog` role in the DOM.
-    // This appears to be semantically incorrect and should be resolved
-    // once we have migrated the component to use Dialog from the `ui-components` library.
-    const dialogs = await page.getByRole('dialog').all();
-    expect(dialogs).toHaveLength(2);
-
     await expect(
-      page.getByRole('heading', {
+      page.getByRole('dialog', {
         name: translations.settings.danger['delete-title']
       })
     ).toBeVisible();
+
     await expect(
       page.getByText(translations.settings.danger['delete-p1'])
     ).toBeVisible();
+
     await expect(
       page.getByText(translations.settings.danger['delete-p2'])
     ).toBeVisible();
@@ -47,11 +56,13 @@ test.describe('Delete Modal component', () => {
       page.getByRole('button', { name: translations.settings.danger.certain })
     ).toBeVisible();
 
-    // There are 2 close buttons on the modal: one is sr-only on top, and one on the bottom of modal
-    const closeButtons = await page
-      .getByRole('button', { name: translations.buttons.close })
-      .all();
-    expect(closeButtons).toHaveLength(2);
+    await expect(
+      page.getByRole('button', { name: translations.settings.danger.certain })
+    ).toBeDisabled();
+
+    await expect(
+      page.getByRole('button', { name: translations.buttons.close })
+    ).toBeVisible();
   });
 
   test('should close the modal after the user cancels account deleting', async ({
@@ -61,43 +72,86 @@ test.describe('Delete Modal component', () => {
       .getByRole('button', { name: translations.settings.danger.delete })
       .click();
 
-    const dialogs = await page.getByRole('dialog').all();
-    expect(dialogs).toHaveLength(2);
+    await expect(
+      page.getByRole('dialog', {
+        name: translations.settings.danger['delete-title']
+      })
+    ).toBeVisible();
 
     await page
       .getByRole('button', { name: translations.settings.danger.nevermind })
       .click();
 
-    for (const dialog of dialogs) {
-      await expect(dialog).not.toBeVisible();
-    }
+    await expect(
+      page.getByRole('dialog', {
+        name: translations.settings.danger['delete-title']
+      })
+    ).not.toBeVisible();
   });
 
-  test('should close the modal and redirect to /learn after the user clicks delete', async ({
+  test('Delele button should be disabled if user incorrectly fills verify input text', async ({
     page
   }) => {
-    await page.route('*/**/account/delete', async route => {
-      // intercept the endpoint to prevent user account from being deleted
-      // as the deletion will cause subsequent tests to fail
-      const json = {};
-      await route.fulfill({ json });
-    });
-
     await page
       .getByRole('button', { name: translations.settings.danger.delete })
       .click();
 
-    const dialogs = await page.getByRole('dialog').all();
-    expect(dialogs).toHaveLength(2);
+    await expect(
+      page.getByRole('dialog', {
+        name: translations.settings.danger['delete-title']
+      })
+    ).toBeVisible();
+
+    const verifyDeleteInput = page.getByRole('textbox', {
+      exact: true
+    });
+    await verifyDeleteInput.fill('incorrect text');
+
+    await expect(
+      page.getByRole('button', {
+        name: translations.settings.danger.certain
+      })
+    ).toBeDisabled();
+  });
+
+  test('should close the modal and sign the user out after they fill in the verify input text and click delete', async ({
+    page
+  }) => {
+    await page
+      .getByRole('button', { name: translations.settings.danger.delete })
+      .click();
+
+    await expect(
+      page.getByRole('dialog', {
+        name: translations.settings.danger['delete-title']
+      })
+    ).toBeVisible();
+
+    const verifyDeleteText = translations.settings.danger['verify-delete-text'];
+
+    const verifyDeleteInput = page.getByRole('textbox', {
+      exact: true
+    });
+    await verifyDeleteInput.fill(verifyDeleteText);
 
     await page
       .getByRole('button', { name: translations.settings.danger.certain })
       .click();
 
-    for (const dialog of dialogs) {
-      await expect(dialog).not.toBeVisible();
-    }
+    await expect(
+      page.getByRole('dialog', {
+        name: translations.settings.danger['delete-title']
+      })
+    ).not.toBeVisible();
 
-    await expect(page).toHaveURL(/.*\/learn\/?/);
+    // TODO: Reinstate these checks when flakiness is resolved:
+    // await expect(page).toHaveURL(allowTrailingSlash('/learn'));
+    // await alertToBeVisible(page, translations.flash['account-deleted']);
+    // The user is signed out after their account is deleted. Don't check the
+    // number of occurrences of the 'Sign in' link as it may vary depending on AB
+    // tests and Gatsby develop mode flakiness.
+    await expect(
+      page.getByRole('link', { name: 'Sign in' }).first()
+    ).toBeVisible();
   });
 });

@@ -1,31 +1,32 @@
-// We import these declaration files here, in the entry point of our application, so
-// that they're available throughout.
-import '@total-typescript/ts-reset';
-import { build } from './app';
-import { FREECODECAMP_NODE_ENV, PORT } from './utils/env';
+import './instrument.js';
 
-const envToLogger = {
-  development: {
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        translateTime: 'HH:MM:ss Z',
-        ignore: 'pid,hostname'
-      }
-    },
-    level: 'debug'
-  },
-  // TODO: is this the right level for production or should we use 'error'?
-  production: { level: 'fatal' },
-  test: undefined
-};
+import { build, buildOptions } from './app.js';
+import { HOST, PORT } from './utils/env.js';
 
 const start = async () => {
-  const fastify = await build({ logger: envToLogger[FREECODECAMP_NODE_ENV] });
+  const fastify = await build(buildOptions);
+
+  const stop = async (signal: NodeJS.Signals) => {
+    fastify.log.info(`Received ${signal}, shutting down.`);
+
+    fastify.server.closeAllConnections();
+    await new Promise<void>(resolve => {
+      fastify.server.close(() => resolve());
+    });
+
+    // Yield one tick so libuv can finalize uv_close() on the TCP handle
+    // before pino's autoEnd blocks the event loop via Atomics.wait().
+    await new Promise<void>(resolve => setImmediate(resolve));
+
+    await fastify.close();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', signal => void stop(signal));
+  process.on('SIGTERM', signal => void stop(signal));
+
   try {
-    const port = Number(PORT);
-    fastify.log.info(`Starting server on port ${port}`);
-    await fastify.listen({ port });
+    await fastify.listen({ port: Number(PORT), host: HOST });
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

@@ -4,13 +4,19 @@ const position = require('unist-util-position');
 
 const getId = require('./get-id');
 
-const keyToSection = {
-  head: 'before-user-code',
-  tail: 'after-user-code'
-};
-const supportedLanguages = ['js', 'css', 'html', 'jsx', 'py'];
+const supportedLanguages = [
+  'js',
+  'css',
+  'html',
+  'jsx',
+  'py',
+  'ts',
+  'tsx',
+  'json'
+];
 const longToShortLanguages = {
   javascript: 'js',
+  typescript: 'ts',
   python: 'py'
 };
 
@@ -19,8 +25,6 @@ function defaultFile(lang, id) {
     ext: lang,
     name: getFilenames(lang),
     contents: '',
-    head: '',
-    tail: '',
     id
   };
 }
@@ -29,7 +33,8 @@ function getFilenames(lang) {
   const langToFilename = {
     js: 'script',
     css: 'styles',
-    py: 'main'
+    py: 'main',
+    json: 'tsconfig'
   };
   return langToFilename[lang] ?? 'index';
 }
@@ -53,7 +58,7 @@ function codeToData(node, seeds, seedKey, validate) {
     throw Error(`On line ${
       position.start(node).line
     } '${shortLang}' is not a supported language.
- Please use one of js, css, html, jsx or py
+ Please use one of js, css, html, jsx, ts, tsx or py
 `);
 
   const fileId = `index${shortLang}`;
@@ -63,11 +68,6 @@ function codeToData(node, seeds, seedKey, validate) {
   if (!seeds[fileId]) {
     seeds[fileId] = defaultFile(shortLang, id);
   }
-  if (isEmpty(node.value) && seedKey !== 'contents') {
-    const section = keyToSection[seedKey];
-    throw Error(`Empty code block in --${section}-- section`);
-  }
-
   seeds[fileId][seedKey] = isEmpty(seeds[fileId][seedKey])
     ? node.value
     : seeds[fileId][seedKey] + '\n' + node.value;
@@ -96,3 +96,4 @@ function idToData(node, index, parent, seeds) {
 }
 
 module.exports.getFileVisitor = getFileVisitor;
+module.exports.getFilenames = getFilenames;

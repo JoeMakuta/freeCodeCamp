@@ -1,7 +1,3 @@
-import type { Prisma } from '@prisma/client';
-
-import type { ProgressTimestamp } from '../../utils/progress';
-
 /**
  * Confirm that a user can submit a CodeRoad project.
  *
@@ -25,39 +21,6 @@ export const canSubmitCodeRoadCertProject = (
   if (completedChallenges.some(c => c.id === id)) return true;
   return false;
 };
-
-/**
- * Create the Prisma query to update a project.
- * @param id The id of the project.
- * @param newChallenge The challenge corresponding to the project.
- * @returns A Prisma query to update the project.
- */
-export const updateProject = (
-  id: string,
-  newChallenge: Prisma.CompletedChallengeUpdateInput
-) => ({
-  completedChallenges: {
-    updateMany: { where: { id }, data: newChallenge }
-  },
-  partiallyCompletedChallenges: { deleteMany: { where: { id } } }
-});
-
-/**
- * Create the Prisma query to create a project.
- * @param id The id of the project.
- * @param newChallenge The challenge corresponding to the project.
- * @param progressTimestamps The user's current progress timestamps.
- * @returns A Prisma query to update the project.
- */
-export const createProject = (
-  id: string,
-  newChallenge: Prisma.CompletedChallengeCreateInput,
-  progressTimestamps: ProgressTimestamp[]
-) => ({
-  completedChallenges: { push: newChallenge },
-  partiallyCompletedChallenges: { deleteMany: { where: { id } } },
-  progressTimestamps: [...progressTimestamps, newChallenge.completedDate]
-});
 
 type MSProfileError = {
   type: 'error';
@@ -176,4 +139,37 @@ export async function verifyTrophyWithMicrosoft({
       }
     } as NoTrophyError;
   }
+}
+
+/**
+ * Generic helper to decode an array of base64 encoded file objects.
+ *
+ * @param files Array of file-like objects each having a base64 encoded `contents` string.
+ * @returns The same array shape with `contents` decoded.
+ */
+export function decodeFiles<T extends { contents: string }>(files: T[]): T[] {
+  return files.map(file => ({
+    ...file,
+    contents: decodeBase64(file.contents)
+  }));
+}
+
+/**
+ * Decodes a base64 encoded string into a UTF-8 string.
+ *
+ * @param str The base64 encoded string to decode.
+ * @returns The decoded UTF-8 string.
+ */
+export function decodeBase64(str: string): string {
+  return Buffer.from(str, 'base64').toString('utf-8');
+}
+
+/**
+ * Encodes a UTF-8 string into a base64 encoded string.
+ *
+ * @param str The UTF-8 string to encode.
+ * @returns The base64 encoded string.
+ */
+export function encodeBase64(str: string): string {
+  return Buffer.from(str, 'utf8').toString('base64');
 }

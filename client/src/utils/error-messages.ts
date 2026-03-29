@@ -12,7 +12,7 @@ export const reallyWeirdErrorMessage = {
 
 export const reportedErrorMessage = {
   type: 'danger',
-  message: FlashMessages.NotRight
+  message: FlashMessages.GenericError
 };
 
 export const certificateMissingErrorMessage = {
@@ -23,4 +23,9 @@ export const certificateMissingErrorMessage = {
 export const msTrophyVerified = {
   type: 'success',
   message: FlashMessages.MsTrophyVerified
+};
+
+export const UserFetchErrorMessage = {
+  type: 'danger',
+  message: FlashMessages.UserFetchError
 };

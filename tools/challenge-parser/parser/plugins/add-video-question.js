@@ -1,84 +1,146 @@
 const { root } = require('mdast-builder');
 const find = require('unist-util-find');
-const getAllBetween = require('./utils/between-headings');
+const { getSection, getAllSections } = require('./utils/get-section');
 const getAllBefore = require('./utils/before-heading');
-const mdastToHtml = require('./utils/mdast-to-html');
+const { getParagraphContent } = require('./utils/get-paragraph-content');
 
 const { splitOnThematicBreak } = require('./utils/split-on-thematic-break');
+const { createMdastToHtml } = require('./utils/i18n-stringify');
 
 function plugin() {
   return transformer;
   function transformer(tree, file) {
-    const questionNodes = getAllBetween(tree, '--question--');
-    if (questionNodes.length > 0) {
-      const questionTree = root(questionNodes);
+    const toHtml = createMdastToHtml(file.data.lang);
 
-      const textNodes = getAllBetween(questionTree, '--text--');
-      const answersNodes = getAllBetween(questionTree, '--answers--');
-      const solutionNodes = getAllBetween(questionTree, '--video-solution--');
+    function getQuestion(textNodes, answersNodes, solutionNodes) {
+      const text = toHtml(textNodes);
+      const answers = getAnswers(answersNodes);
+      const solution = getSolution(solutionNodes);
 
-      const question = getQuestion(textNodes, answersNodes, solutionNodes);
+      if (!text) throw Error('text is missing from question');
+      if (!answers) throw Error('answers are missing from question');
+      if (!solution) throw Error('solution is missing from question');
+      if (solution > answers.length)
+        throw Error(
+          `solution must be within range of number of answers: 1-${answers.length}`
+        );
+      if (answers[solution - 1].feedback)
+        throw Error('answer selected as solution cannot have feedback section');
 
-      file.data.question = question;
+      return { text, answers, solution };
     }
-  }
-}
 
-function getQuestion(textNodes, answersNodes, solutionNodes) {
-  const text = mdastToHtml(textNodes);
-  const answers = getAnswers(answersNodes);
-  const solution = getSolution(solutionNodes);
+    function getAnswers(answersNodes) {
+      const answerGroups = splitOnThematicBreak(answersNodes);
 
-  if (!text) throw Error('text is missing from question');
-  if (!answers) throw Error('answers are missing from question');
-  if (!solution) throw Error('solution is missing from question');
+      return answerGroups.map((answerGroup, index) => {
+        const answerTree = root(answerGroup);
+        const feedbackGroups = getAllSections(answerTree, '--feedback--');
 
-  return { text, answers, solution };
-}
+        if (feedbackGroups.length > 1)
+          throw new Error(`answer ${index + 1} has multiple feedback sections`);
 
-function getAnswers(answersNodes) {
-  const answerGroups = splitOnThematicBreak(answersNodes);
+        const [feedbackNodes] = feedbackGroups;
+        const audioIdNodes = getSection(answerTree, '--audio-id--');
+        const hasFeedback = feedbackNodes?.length > 0;
+        const hasAudioId = audioIdNodes.length > 0;
 
-  return answerGroups.map(answerGroup => {
-    const answerTree = root(answerGroup);
-    const feedback = find(answerTree, { value: '--feedback--' });
+        if (hasFeedback || hasAudioId) {
+          let answerNodes;
 
-    if (feedback) {
-      const answerNodes = getAllBefore(answerTree, '--feedback--');
-      const feedbackNodes = getAllBetween(answerTree, '--feedback--');
+          if (hasFeedback && hasAudioId) {
+            const feedbackHeading = find(answerTree, {
+              type: 'heading',
+              children: [{ type: 'text', value: '--feedback--' }]
+            });
+            const audioIdHeading = find(answerTree, {
+              type: 'heading',
+              children: [{ type: 'text', value: '--audio-id--' }]
+            });
 
-      if (answerNodes.length < 1) {
-        throw Error('Answer missing');
+            const feedbackIndex = answerTree.children.indexOf(feedbackHeading);
+            const audioIdIndex = answerTree.children.indexOf(audioIdHeading);
+            const firstMarker =
+              feedbackIndex < audioIdIndex ? '--feedback--' : '--audio-id--';
+            answerNodes = getAllBefore(answerTree, firstMarker);
+          } else if (hasFeedback) {
+            answerNodes = getAllBefore(answerTree, '--feedback--');
+          } else {
+            answerNodes = getAllBefore(answerTree, '--audio-id--');
+          }
+
+          if (answerNodes.length < 1) {
+            throw Error('Answer missing');
+          }
+
+          let extractedAudioId = null;
+          if (hasAudioId) {
+            const audioIdContent = getParagraphContent(audioIdNodes[0]);
+            if (audioIdContent && audioIdContent.trim()) {
+              extractedAudioId = audioIdContent.trim();
+            }
+          }
+
+          return {
+            answer: toHtml(answerNodes),
+            feedback: hasFeedback ? toHtml(feedbackNodes) : null,
+            audioId: extractedAudioId
+          };
+        }
+
+        return {
+          answer: toHtml(answerGroup),
+          feedback: null,
+          audioId: null
+        };
+      });
+    }
+
+    function getSolution(solutionNodes) {
+      let solution;
+      try {
+        solution = Number(getParagraphContent(solutionNodes[0]));
+        if (Number.isNaN(solution)) throw Error('Not a number');
+        if (solution < 1) throw Error('Not positive number');
+      } catch (e) {
+        console.log(e);
+        throw Error('A video solution should be a positive integer');
       }
 
-      return {
-        answer: mdastToHtml(answerNodes),
-        feedback: mdastToHtml(feedbackNodes)
-      };
+      return solution;
     }
 
-    return { answer: mdastToHtml(answerGroup), feedback: null };
-  });
-}
+    const allQuestionNodes = getSection(tree, '--questions--');
 
-function getSolution(solutionNodes) {
-  let solution;
-  try {
-    if (solutionNodes.length > 1) throw Error('Too many nodes');
-    if (solutionNodes[0].children.length > 1)
-      throw Error('Too many child nodes');
-    const solutionString = solutionNodes[0].children[0].value;
-    if (solutionString === '') throw Error('Non-empty string required');
+    if (allQuestionNodes.length > 0) {
+      const questions = [];
+      const questionTrees = [];
 
-    solution = Number(solutionString);
-    if (Number.isNaN(solution)) throw Error('Not a number');
-    if (solution < 1) throw Error('Not positive number');
-  } catch (e) {
-    console.log(e);
-    throw Error('A video solution should be a positive integer');
+      allQuestionNodes.forEach(questionNode => {
+        const isStartOfQuestion =
+          questionNode.children?.[0]?.value === '--text--';
+        if (isStartOfQuestion) {
+          questionTrees.push([questionNode]);
+        } else if (questionTrees.length === 0) {
+          throw Error('question text is missing in questions section');
+        } else {
+          questionTrees[questionTrees.length - 1].push(questionNode);
+        }
+      });
+
+      questionTrees.forEach(questionNodes => {
+        const questionTree = root(questionNodes);
+
+        const textNodes = getSection(questionTree, '--text--');
+        const answersNodes = getSection(questionTree, '--answers--');
+        const solutionNodes = getSection(questionTree, '--video-solution--');
+
+        questions.push(getQuestion(textNodes, answersNodes, solutionNodes));
+      });
+
+      file.data.questions = questions;
+    }
   }
-
-  return solution;
 }
 
 module.exports = plugin;

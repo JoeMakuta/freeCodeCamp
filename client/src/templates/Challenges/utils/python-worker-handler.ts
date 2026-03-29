@@ -1,15 +1,13 @@
-// TODO: This might be cleaner as a class.
-import pythonWorkerData from '../../../../config/browser-scripts/python-worker.json';
+import { version } from '@freecodecamp/browser-scripts/package.json';
 
-const pythonWorkerSrc = `/js/${pythonWorkerData.filename}.js`;
+// TODO: This might be cleaner as a class.
+const pythonWorkerSrc = `/js/workers/${version}/python-worker.js`;
 
 let worker: Worker | null = null;
-let testWorker: Worker | null = null;
 let listener: ((event: MessageEvent) => void) | null = null;
 type Code = {
   contents: string;
   editableContents: string;
-  original: string;
 };
 // We need to keep track of the last code message so we can re-run it if the
 // worker is reset.
@@ -20,13 +18,6 @@ function getPythonWorker(): Worker {
     worker = new Worker(pythonWorkerSrc);
   }
   return worker;
-}
-
-export function getPythonTestWorker(): Worker {
-  if (!testWorker) {
-    testWorker = new Worker(pythonWorkerSrc);
-  }
-  return testWorker;
 }
 
 type PythonWorkerEvent = {
@@ -110,7 +101,6 @@ export function interruptCodeExecution(): void {
 export function runPythonCode(code: {
   contents: string;
   editableContents: string;
-  original: string;
 }): void {
   lastCodeMessage = code;
   getPythonWorker().postMessage({ type: 'run', code });

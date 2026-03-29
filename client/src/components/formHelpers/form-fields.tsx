@@ -14,15 +14,18 @@ import {
   composeValidators,
   fCCValidator,
   httpValidator,
-  pathValidator
+  pathValidator,
+  sourceCodeLinkExistsValidator,
+  sourceCodeLinkPublicValidator
 } from './form-validators';
 
 export type FormOptions = {
   ignored?: string[];
   isEditorLinkAllowed?: boolean;
   isLocalLinkAllowed?: boolean;
+  isSourceCodeLinkRequired?: boolean;
   required?: string[];
-  types?: { [key: string]: string };
+  types?: { [key: string]: React.HTMLInputTypeAttribute };
   placeholders?: { [key: string]: string };
 };
 
@@ -38,15 +41,17 @@ function FormFields({ formFields, options }: FormFieldsProps): JSX.Element {
     required = [],
     types = {},
     isEditorLinkAllowed = false,
-    isLocalLinkAllowed = false
+    isLocalLinkAllowed = false,
+    isSourceCodeLinkRequired = false
   } = options;
 
   const nullOrWarning = (
-    value: string,
+    value: string | undefined,
     error: unknown,
     isURL: boolean,
     name: string
   ) => {
+    if (!value) return null;
     let validationError: string | undefined;
     if (value && isURL) {
       try {
@@ -64,6 +69,12 @@ function FormFields({ formFields, options }: FormFieldsProps): JSX.Element {
         validators.push(pathValidator);
       }
     }
+    if (name === 'githubLink') {
+      if (isSourceCodeLinkRequired) {
+        validators.push(sourceCodeLinkExistsValidator);
+      }
+      validators.push(sourceCodeLinkPublicValidator);
+    }
     if (!isLocalLinkAllowed) {
       validators.push(localhostValidator);
     }
@@ -72,7 +83,7 @@ function FormFields({ formFields, options }: FormFieldsProps): JSX.Element {
       validationError ||
       validationWarning) as string;
     return message ? (
-      <HelpBlock>
+      <HelpBlock id={`${name}-message`}>
         <Alert variant={error || validationError ? 'danger' : 'info'}>
           {message}
         </Alert>
@@ -84,8 +95,7 @@ function FormFields({ formFields, options }: FormFieldsProps): JSX.Element {
       {formFields
         .filter(formField => !ignored.includes(formField.name))
         .map(({ name, label }) => (
-          // TODO: verify if the value is always a string
-          <Field key={`${name}-field`} name={name}>
+          <Field<string | undefined> key={`${name}-field`} name={name}>
             {({ input: { value, onChange }, meta: { pristine, error } }) => {
               const placeholder =
                 name in placeholders ? placeholders[name] : '';
@@ -105,8 +115,9 @@ function FormFields({ formFields, options }: FormFieldsProps): JSX.Element {
                     placeholder={placeholder}
                     required={required.includes(name)}
                     rows={4}
-                    type='url'
+                    type={types[name] || 'text'}
                     value={value as string}
+                    aria-describedby={`${name}-message`}
                     data-playwright-test-label={`${name}-form-control`}
                   />
                   {nullOrWarning(

@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import {
   bothLinks,
   invalidGithubLink,
@@ -23,7 +24,7 @@ describe('getSolutionDisplayType', () => {
       'showMultifileProjectSolution'
     );
     expect(getSolutionDisplayType(multifilePythonSolution)).toBe(
-      'showMultifileProjectSolution'
+      'showUserCode'
     );
   });
   it('should handle solutions with a single valid url', () => {

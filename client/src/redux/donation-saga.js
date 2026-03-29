@@ -17,24 +17,27 @@ import {
 } from '../utils/ajax';
 import { stringifyDonationEvents } from '../utils/analytics-strings';
 import { stripe } from '../utils/stripe';
-import { PaymentProvider } from '../../../shared/config/donation-settings';
+import { PaymentProvider } from '@freecodecamp/shared/config/donation-settings';
+import {
+  getSessionChallengeData,
+  saveCurrentCount
+} from '../utils/session-storage';
+
 import { actionTypes as appTypes } from './action-types';
 import {
   openDonationModal,
   postChargeComplete,
   postChargeProcessing,
   postChargeError,
-  preventBlockDonationRequests,
-  setCompletionCountWhenShownProgressModal,
+  preventSectionDonationRequests,
   updateCardError,
   updateCardRedirecting
 } from './actions';
 import {
   isDonatingSelector,
-  recentlyClaimedBlockSelector,
+  donatableSectionRecentlyCompletedSelector,
   shouldRequestDonationSelector,
   isSignedInSelector,
-  completionCountSelector,
   completedChallengesSelector
 } from './selectors';
 
@@ -43,16 +46,32 @@ const updateCardErrorMessage = i18next.t('donate.error-3');
 
 function* showDonateModalSaga() {
   let shouldRequestDonation = yield select(shouldRequestDonationSelector);
-  if (shouldRequestDonation) {
+  const MODAL_SHOWN_KEY = 'modalShownTimestamp';
+  const modalShownTimestamp = sessionStorage.getItem(MODAL_SHOWN_KEY);
+  // If the modal has been shown in the last 20 seconds, the animation should
+  // still be running:
+  const isAnimationRunning = Date.now() - modalShownTimestamp < 20000;
+  const shouldShowModal = shouldRequestDonation || isAnimationRunning;
+  const donatableSectionRecentlyCompleted = yield select(
+    donatableSectionRecentlyCompletedSelector
+  );
+
+  if (shouldShowModal) {
     yield delay(200);
-    const recentlyClaimedBlock = yield select(recentlyClaimedBlockSelector);
     yield put(openDonationModal());
-    yield take(appTypes.closeDonationModal);
-    if (recentlyClaimedBlock) {
-      yield put(preventBlockDonationRequests());
-    } else {
-      yield put(setCompletionCountWhenShownProgressModal());
+    if (!donatableSectionRecentlyCompleted) {
+      sessionStorage.setItem(MODAL_SHOWN_KEY, Date.now());
     }
+    yield take(appTypes.closeDonationModal);
+    if (!donatableSectionRecentlyCompleted) {
+      yield call(saveCurrentCount);
+    }
+  }
+
+  /* users can complete donatable section but have less than 10 completed challenge
+     to show the donation modal.*/
+  if (donatableSectionRecentlyCompleted) {
+    yield put(preventSectionDonationRequests());
   }
 }
 
@@ -119,9 +138,8 @@ export function* postChargeSaga({
       });
     } else {
       const completedChallenges = yield select(completedChallengesSelector);
-      const completedChallengesInSession = yield select(
-        completionCountSelector
-      );
+      const sessionChallengeData = yield call(getSessionChallengeData);
+      const completedChallengesInSession = sessionChallengeData.currentCount;
       yield call(callGA, {
         event: 'donation',
         action: stringifyDonationEvents(paymentContext, paymentProvider),
@@ -161,17 +179,14 @@ function* stripeCardErrorHandler(
   }
 }
 
-export function* setDonationCookie() {
-  if (document?.cookie) {
-    const isDonating = yield select(isDonatingSelector);
-    const isDonorCookieSet = document.cookie
-      .split(';')
-      .some(item => item.trim().startsWith('isDonor=true'));
-    if (isDonating) {
-      if (!isDonorCookieSet) {
-        document.cookie = 'isDonor=true';
-      }
-    }
+export function* setDonationCookieIfDonating() {
+  const isDonating = yield select(isDonatingSelector);
+  if (isDonating) setDonationCookie();
+}
+
+export function setDonationCookie() {
+  if (document) {
+    document.cookie = 'isDonor=true';
   }
 }
 
@@ -184,7 +199,7 @@ export function* updateCardSaga() {
 
     if (!sessionId) throw new Error('No sessionId');
     (yield stripe).redirectToCheckout({ sessionId });
-  } catch (error) {
+  } catch {
     yield put(updateCardError(updateCardErrorMessage));
   }
 }
@@ -193,7 +208,7 @@ export function createDonationSaga(types) {
   return [
     takeEvery(types.tryToShowDonationModal, showDonateModalSaga),
     takeLeading(types.postCharge, postChargeSaga),
-    takeEvery(types.fetchUserComplete, setDonationCookie),
+    takeEvery(types.fetchUserComplete, setDonationCookieIfDonating),
     takeLeading(types.updateCard, updateCardSaga)
   ];
 }

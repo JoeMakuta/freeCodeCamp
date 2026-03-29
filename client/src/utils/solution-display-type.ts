@@ -1,6 +1,6 @@
 import type { CompletedChallenge } from '../redux/prop-types';
-import { challengeTypes } from '../../../shared/config/challenge-types';
-import { maybeUrlRE } from '.';
+import { challengeTypes } from '@freecodecamp/shared/config/challenge-types';
+import { hasProtocolRE } from '.';
 
 type DisplayType =
   | 'none'
@@ -8,7 +8,8 @@ type DisplayType =
   | 'showUserCode'
   | 'showProjectAndGithubLinks'
   | 'showProjectLink'
-  | 'showExamResults';
+  | 'showExamResults'
+  | 'noSolutionToDisplay';
 
 export const getSolutionDisplayType = ({
   solution,
@@ -17,16 +18,17 @@ export const getSolutionDisplayType = ({
   challengeType,
   examResults
 }: CompletedChallenge): DisplayType => {
+  if (challengeType === challengeTypes.examDownload)
+    return 'noSolutionToDisplay';
   if (examResults) return 'showExamResults';
   if (challengeFiles?.length)
-    return challengeType === challengeTypes.multifileCertProject ||
-      challengeType === challengeTypes.multifilePythonCertProject
+    return challengeType === challengeTypes.multifileCertProject
       ? 'showMultifileProjectSolution'
       : 'showUserCode';
   if (!solution) return 'none';
   // Some of the user records still have JavaScript project solutions stored as
   // solution strings
-  if (!maybeUrlRE.test(solution)) return 'showUserCode';
-  if (maybeUrlRE.test(githubLink ?? '')) return 'showProjectAndGithubLinks';
+  if (!hasProtocolRE.test(solution)) return 'showUserCode';
+  if (hasProtocolRE.test(githubLink ?? '')) return 'showProjectAndGithubLinks';
   return 'showProjectLink';
 };

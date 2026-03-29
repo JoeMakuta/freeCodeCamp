@@ -1,9 +1,5 @@
 const path = require('path');
-const { sortChallengeFiles } = require('../sort-challengefiles');
-const {
-  challengeTypes,
-  viewTypes
-} = require('../../../shared/config/challenge-types');
+const { viewTypes } = require('@freecodecamp/shared/config/challenge-types');
 
 const backend = path.resolve(
   __dirname,
@@ -21,22 +17,13 @@ const codeAlly = path.resolve(
   __dirname,
   '../../src/templates/Challenges/codeally/show.tsx'
 );
-const intro = path.resolve(
-  __dirname,
-  '../../src/templates/Introduction/intro.tsx'
-);
 const superBlockIntro = path.resolve(
   __dirname,
   '../../src/templates/Introduction/super-block-intro.tsx'
 );
-const video = path.resolve(
+const quiz = path.resolve(
   __dirname,
-  '../../src/templates/Challenges/video/show.tsx'
-);
-
-const odin = path.resolve(
-  __dirname,
-  '../../src/templates/Challenges/odin/show.tsx'
+  '../../src/templates/Challenges/quiz/show.tsx'
 );
 
 const exam = path.resolve(
@@ -49,14 +36,19 @@ const msTrophy = path.resolve(
   '../../src/templates/Challenges/ms-trophy/show.tsx'
 );
 
-const dialogue = path.resolve(
-  __dirname,
-  '../../src/templates/Challenges/dialogue/show.tsx'
-);
-
 const fillInTheBlank = path.resolve(
   __dirname,
   '../../src/templates/Challenges/fill-in-the-blank/show.tsx'
+);
+
+const generic = path.resolve(
+  __dirname,
+  '../../src/templates/Challenges/generic/show.tsx'
+);
+
+const examDownload = path.resolve(
+  __dirname,
+  '../../src/templates/Challenges/exam-download/show.tsx'
 );
 
 const views = {
@@ -64,60 +56,51 @@ const views = {
   classic,
   modern: classic,
   frontend,
-  video,
+  quiz,
   codeAlly,
-  odin,
   exam,
   msTrophy,
-  dialogue,
-  fillInTheBlank
-  // quiz: Quiz
+  fillInTheBlank,
+  generic,
+  examDownload
 };
 
-function getIsFirstStepInBlock(id, edges) {
-  const current = edges[id];
-  const previous = edges[id - 1];
+function getIsFirstStepInBlock(id, nodes) {
+  const current = nodes[id];
+  const previous = nodes[id - 1];
 
   if (!previous) return true;
-  return previous.node.challenge.block !== current.node.challenge.block;
-}
-
-function getNextChallengePath(id, edges) {
-  const next = edges[id + 1];
-  return next ? next.node.challenge.fields.slug : null;
-}
-
-function getPrevChallengePath(id, edges) {
-  const prev = edges[id - 1];
-  return prev ? prev.node.challenge.fields.slug : null;
+  return previous.challenge.block !== current.challenge.block;
 }
 
 function getTemplateComponent(challengeType) {
   return views[viewTypes[challengeType]];
 }
 
-function getNextBlock(id, edges) {
-  const next = edges[id + 1];
-  return next ? next.node.challenge.block : null;
-}
+exports.getTemplateComponent = getTemplateComponent;
 
-exports.createChallengePages = function (createPage) {
-  return function ({ node: { challenge } }, index, allChallengeEdges) {
+exports.createChallengePages = function (
+  createPage,
+  { idToNextPathCurrentCurriculum, idToPrevPathCurrentCurriculum }
+) {
+  return function (node, index, allChallengeNodes) {
     const {
       dashedName,
       disableLoopProtectTests,
       disableLoopProtectPreview,
       certification,
       superBlock,
+      chapter,
+      module,
       block,
       fields: { slug, blockHashSlug },
       required = [],
       template,
       challengeType,
-      id
-    } = challenge;
-    // TODO: challengeType === 7 and isPrivate are the same, right? If so, we
-    // should remove one of them.
+      id,
+      isLastChallengeInBlock,
+      saveSubmissionToDB
+    } = node.challenge;
 
     createPage({
       path: slug,
@@ -130,49 +113,49 @@ exports.createChallengePages = function (createPage) {
           disableLoopProtectTests,
           disableLoopProtectPreview,
           superBlock,
+          chapter,
+          module,
           block,
-          isFirstStep: getIsFirstStepInBlock(index, allChallengeEdges),
+          isFirstStep: getIsFirstStepInBlock(index, allChallengeNodes),
           template,
           required,
-          nextBlock: getNextBlock(index, allChallengeEdges),
-          nextChallengePath: getNextChallengePath(index, allChallengeEdges),
-          prevChallengePath: getPrevChallengePath(index, allChallengeEdges),
-          id
+          isLastChallengeInBlock: isLastChallengeInBlock,
+          nextChallengePath: idToNextPathCurrentCurriculum[node.id],
+          prevChallengePath: idToPrevPathCurrentCurriculum[node.id],
+          id,
+          saveSubmissionToDB
         },
-        projectPreview: getProjectPreviewConfig(challenge, allChallengeEdges),
-        slug
+        projectPreview: getProjectPreviewConfig(
+          node.challenge,
+          allChallengeNodes
+        ),
+        id: node.id
       }
     });
   };
 };
 
-function getProjectPreviewConfig(challenge, allChallengeEdges) {
-  const { block, challengeOrder, challengeType, usesMultifileEditor } =
-    challenge;
+// TODO: figure out a cleaner way to get the last challenge in a block.
+function getProjectPreviewConfig(challenge, allChallengeNodes) {
+  const { block } = challenge;
 
-  const challengesInBlock = allChallengeEdges
-    .filter(({ node: { challenge } }) => challenge.block === block)
-    .map(({ node: { challenge } }) => challenge);
+  const challengesInBlock = allChallengeNodes
+    .filter(({ challenge }) => challenge.block === block)
+    .map(({ challenge }) => challenge);
   const lastChallenge = challengesInBlock[challengesInBlock.length - 1];
-  const solutionToLastChallenge = sortChallengeFiles(
-    lastChallenge.solutions[0] ?? []
-  );
-  const lastChallengeFiles = sortChallengeFiles(
-    lastChallenge.challengeFiles ?? []
-  );
-  const projectPreviewChallengeFiles = lastChallengeFiles.map((file, id) => ({
+  const solutionFiles = lastChallenge.solutions[0] ?? [];
+  const lastChallengeFiles = lastChallenge.challengeFiles ?? [];
+
+  const findFileByKey = (key, files) =>
+    files.find(file => file.fileKey === key);
+
+  const projectPreviewChallengeFiles = lastChallengeFiles.map(file => ({
     ...file,
-    contents: solutionToLastChallenge[id]?.contents ?? file.contents
+    contents:
+      findFileByKey(file.fileKey, solutionFiles)?.contents ?? file.contents
   }));
 
   return {
-    showProjectPreview:
-      challengeOrder === 0 &&
-      usesMultifileEditor &&
-      challengeType !== challengeTypes.multifileCertProject &&
-      challengeType !== challengeTypes.multifilePythonCertProject &&
-      // TODO: revert this to enable project previews for python challenges
-      challengeType !== challengeTypes.python,
     challengeData: {
       challengeType: lastChallenge.challengeType,
       challengeFiles: projectPreviewChallengeFiles
@@ -180,47 +163,13 @@ function getProjectPreviewConfig(challenge, allChallengeEdges) {
   };
 }
 
-exports.createBlockIntroPages = function (createPage) {
-  return function (edge) {
-    const {
-      fields: { slug },
-      frontmatter: { block }
-    } = edge.node;
-
-    createPage({
-      path: slug,
-      component: intro,
-      context: {
-        block,
-        slug
-      }
-    });
-  };
-};
-
 exports.createSuperBlockIntroPages = function (createPage) {
-  return function (edge) {
-    const {
-      fields: { slug },
-      frontmatter: { superBlock, certification }
-    } = edge.node;
-
-    if (!certification) {
-      throw Error(
-        `superBlockIntro page, '${superBlock}' must have certification in frontmatter`
-      );
-    }
-
-    // TODO: throw if it encounters an unknown certification. Also, handle
-    // coding-interview-prep. it's not a certification, but it is a superBlock.
-
+  return function ({ superBlock }) {
     createPage({
-      path: slug,
+      path: `/learn/${superBlock}/`,
       component: superBlockIntro,
       context: {
-        certification,
-        superBlock,
-        slug
+        superBlock
       }
     });
   };
