@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/isolated-user';
 import { clearEditor, focusEditor, getEditors } from './utils/editor';
 
 const workshopChallengeUrl =
@@ -20,7 +20,19 @@ const workshopPassingSolution = `<!DOCTYPE html>
 </html>`;
 
 test.use({
+  userPreset: 'certified',
   viewport: { width: 1080, height: 720 }
+});
+
+// The mobile app modal covers the page on mobile user agents (Mobile Chrome /
+// Mobile Safari projects), so dismiss it before every test.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mobileAppModalDismissedAt',
+      JSON.stringify(Date.now())
+    );
+  });
 });
 
 test('Editor is focused on load', async ({ page }) => {
@@ -39,18 +51,6 @@ test('Clicking "Check Your Code" reveals failing feedback', async ({
   await expect(
     page.getByTestId('independentLowerJaw-failing-hint')
   ).toBeVisible();
-});
-
-test('Reset button opens and closes the reset modal', async ({ page }) => {
-  await page.goto(workshopChallengeUrl);
-
-  await page.getByTestId('independentLowerJaw-reset-button').click();
-
-  const resetModal = page.getByRole('dialog', { name: 'Reset this lesson?' });
-  await expect(resetModal).toBeVisible();
-
-  await page.getByRole('button', { name: /close/i }).click();
-  await expect(resetModal).not.toBeVisible();
 });
 
 test('Checks hotkeys when instruction is focused', async ({
@@ -79,14 +79,15 @@ test('Checks hotkeys when instruction is focused', async ({
 
 test('Hint text should not contain placeholders `fcc-expected`', async ({
   page,
-  browserName,
-  isMobile
+  browserName
 }) => {
   await page.goto(penguinChallengeUrl);
 
   const editor = getEditors(page);
-  await focusEditor({ page, isMobile });
-  await clearEditor({ page, browserName, isMobile });
+  // The viewport is fixed to desktop width, so the desktop layout is shown
+  // even on the mobile projects.
+  await focusEditor({ page, isMobile: false });
+  await clearEditor({ page, browserName, isMobile: false });
   await editor.fill(
     'body{background:linear-gradient(45deg, rgb(118, 201, 255), rgb(247, 255, 222));margin:0;padding:0;width:5%;height:100vh}'
   );
@@ -105,14 +106,13 @@ test.describe('Unauthenticated user', () => {
 
   test('Focuses on the sign in button when unauthenticated user completes a step', async ({
     page,
-    browserName,
-    isMobile
+    browserName
   }) => {
     await page.goto(workshopChallengeUrl);
 
     const editor = getEditors(page);
-    await focusEditor({ page, isMobile });
-    await clearEditor({ page, browserName, isMobile });
+    await focusEditor({ page, isMobile: false });
+    await clearEditor({ page, browserName, isMobile: false });
     await editor.fill(workshopPassingSolution);
 
     await page.getByTestId('independentLowerJaw-check-button').click();
@@ -130,18 +130,15 @@ test.describe('Unauthenticated user', () => {
 });
 
 test.describe('Authenticated user', () => {
-  test.use({ storageState: 'playwright/.auth/certified-user.json' });
-
   test('Focuses on the submit button when authenticated user completes a step', async ({
     page,
-    browserName,
-    isMobile
+    browserName
   }) => {
     await page.goto(workshopChallengeUrl);
 
     const editor = getEditors(page);
-    await focusEditor({ page, isMobile });
-    await clearEditor({ page, browserName, isMobile });
+    await focusEditor({ page, isMobile: false });
+    await clearEditor({ page, browserName, isMobile: false });
     await editor.fill(workshopPassingSolution);
 
     await page.getByTestId('independentLowerJaw-check-button').click();
@@ -152,6 +149,70 @@ test.describe('Authenticated user', () => {
     await expect(submitButton).toBeFocused();
     await expect(
       page.getByTestId('independentLowerJaw-signin-link')
+    ).toHaveCount(0);
+  });
+});
+
+test.describe('Mobile viewport', () => {
+  test.use({
+    viewport: { width: 393, height: 851 },
+    isMobile: true
+  });
+
+  test('Renders the lower jaw and reveals failing feedback when "Check Your Code" is clicked', async ({
+    page
+  }) => {
+    await page.goto(workshopChallengeUrl);
+
+    const lowerJaw = page.getByTestId('independentLowerJaw-container');
+    await expect(lowerJaw).toBeVisible();
+
+    await page.getByTestId('independentLowerJaw-check-button').click();
+
+    await expect(
+      page.getByTestId('independentLowerJaw-failing-hint')
+    ).toBeVisible();
+  });
+
+  test('Resets the lower jaw when prompted', async ({ page }) => {
+    await page.goto(workshopChallengeUrl);
+
+    await page.getByTestId('independentLowerJaw-check-button').click();
+
+    const hint = page.getByTestId('independentLowerJaw-failing-hint');
+    await expect(hint).toBeVisible();
+
+    await page.getByTestId('independentLowerJaw-reset-button').click();
+
+    await expect(
+      page.getByRole('dialog', { name: 'Reset this lesson?' })
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Reset this lesson' }).click();
+
+    await expect(hint).not.toBeVisible();
+    await expect(
+      page.getByTestId('independentLowerJaw-check-button')
+    ).toBeVisible();
+  });
+
+  test('Shows the submit button after a passing check', async ({
+    page,
+    browserName
+  }) => {
+    await page.goto(workshopChallengeUrl);
+
+    const editor = getEditors(page);
+    await focusEditor({ page, isMobile: true });
+    await clearEditor({ page, browserName, isMobile: true });
+    await editor.fill(workshopPassingSolution);
+
+    await page.getByTestId('independentLowerJaw-check-button').click();
+
+    const submitButton = page.getByTestId('independentLowerJaw-submit-button');
+    await expect(submitButton).toBeVisible();
+    await expect(
+      page.getByTestId('independentLowerJaw-check-button')
     ).toHaveCount(0);
   });
 });

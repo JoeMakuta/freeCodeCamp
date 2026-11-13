@@ -1,14 +1,13 @@
-import { test, expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { test, expect } from './fixtures/isolated-user';
 import translations from '../client/i18n/locales/english/translations.json';
 
-const runChallengeTest = async (page: Page, isMobile: boolean) => {
-  if (isMobile) {
-    await page.getByText('Run').click();
-  } else {
-    await page
-      .getByRole('button', { name: translations.buttons['check-code'] })
-      .click();
-  }
+test.use({ userPreset: 'certified' });
+
+const runChallengeTest = async (page: Page) => {
+  await page
+    .getByRole('button', { name: translations.buttons['check-code'] })
+    .click();
 };
 
 test.beforeEach(async ({ page }) => {
@@ -39,11 +38,8 @@ test.describe('Challenge Test Suite Component Tests', () => {
     ).toBeVisible();
   });
 
-  test('should render one pass and two fail icon', async ({
-    page,
-    isMobile
-  }) => {
-    await runChallengeTest(page, isMobile);
+  test('should render one pass and two fail icon', async ({ page }) => {
+    await runChallengeTest(page);
     await expect(page.getByTestId('test-pass-icon')).toHaveCount(1);
     await expect(page.getByText(translations.icons.fail)).toHaveCount(2);
   });

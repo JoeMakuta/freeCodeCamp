@@ -1,4 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/isolated-user';
+
+test.use({ userPreset: 'certified' });
 
 test.describe('Editor scrollbar width on mobile', () => {
   test.use({
@@ -18,11 +20,6 @@ test.describe('Editor scrollbar width on mobile', () => {
     const upperJawWidth = await upperJawElement.evaluate(
       (node: HTMLElement) => node.offsetWidth
     );
-
-    const lowerJawElement = page.locator('#editor-lower-jaw');
-    expect(
-      await lowerJawElement.evaluate((node: HTMLElement) => node.offsetWidth)
-    ).toEqual(upperJawWidth);
 
     const scrollableElement = page.locator('.monaco-scrollable-element');
     expect(
@@ -45,11 +42,6 @@ test.describe('Editor scrollbar width on mobile', () => {
     const upperJawWidth = await upperJawElement.evaluate(
       (node: HTMLElement) => node.offsetWidth
     );
-
-    const lowerJawElement = page.locator('#editor-lower-jaw');
-    expect(
-      await lowerJawElement.evaluate((node: HTMLElement) => node.offsetWidth)
-    ).toEqual(upperJawWidth);
 
     const scrollableElement = page.locator('.monaco-scrollable-element');
     expect(

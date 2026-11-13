@@ -77,7 +77,7 @@ interface DownloadableChallengeFile {
   contents: string;
 }
 
-function CompletionModal({
+export function CompletionModal({
   challengeFiles,
   close,
   dashedName,
@@ -101,7 +101,7 @@ function CompletionModal({
       const blob = new Blob([allFileContents], { type: 'text/json' });
       setDownloadURL(URL.createObjectURL(blob));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [challengeFiles]);
 
   useEffect(() => {

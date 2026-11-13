@@ -1,10 +1,11 @@
 name: Issue - Content in our Coding Challenges
 description: Report issues with a specific challenge, like broken tests, unclear instructions, etc.
-labels: ['scope: curriculum', 'type: bug', 'status: waiting triage']
+type: Bug
+labels: ['scope: curriculum', 'status: waiting triage']
 body:
   - type: markdown
     attributes:
-      value: If you're reporting a security issue, don't create a GitHub issue. Instead, visit https://contribute.freecodecamp.org/#/security.
+      value: If you're reporting a security issue, don't create a GitHub issue. Instead, visit https://contribute.freecodecamp.org/security/.
   - type: textarea
     attributes:
       label: Describe the Issue

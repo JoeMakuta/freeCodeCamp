@@ -21,23 +21,23 @@
     "mail-check-url": "https://www.freecodecamp.org/news/how-to-donate-to-free-code-camp/#can-i-mail-a-physical-check"
   },
   "nav": {
-    "contribute": "https://contribute.freecodecamp.org/#/",
+    "contribute": "https://contribute.freecodecamp.org/",
     "forum": "https://forum.freecodecamp.org/",
     "news": "https://freecodecamp.org/news/",
     "podcast": "https://freecodecamp.libsyn.com/"
   },
   "help": {
-    "HTML-CSS": "HTML-CSS",
-    "JavaScript": "JavaScript",
-    "Python": "Python",
-    "Backend Development": "Backend Development",
-    "C-Sharp": "C-Sharp",
-    "English": "English",
-    "Spanish Curriculum": "Spanish Curriculum",
-    "Chinese Curriculum": "Chinese Curriculum",
-    "Odin": "The Odin Project",
-    "Euler": "Project Euler",
-    "Rosetta": "Rosetta Code",
-    "General": "General"
+    "HTML-CSS": "curriculum-help",
+    "JavaScript": "curriculum-help",
+    "Python": "curriculum-help",
+    "Backend Development": "curriculum-help",
+    "C-Sharp": "curriculum-help",
+    "English": "curriculum-help",
+    "Spanish Curriculum": "curriculum-help",
+    "Chinese Curriculum": "curriculum-help",
+    "Odin": "curriculum-help",
+    "Euler": "curriculum-help",
+    "Rosetta": "curriculum-help",
+    "General": "curriculum-help"
   }
 }

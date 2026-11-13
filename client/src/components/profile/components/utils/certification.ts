@@ -5,10 +5,12 @@ export const getCertifications = (user: User) => {
   const {
     isA2EnglishCert,
     isB1EnglishCert,
+    isBackEndDevApisCertV9,
     isRespWebDesignCert,
     isRespWebDesignCertV9,
     is2018DataVisCert,
     isFrontEndLibsCert,
+    isFrontEndLibsCertV9,
     isJavascriptCertV9,
     isJsAlgoDataStructCert,
     isApisMicroservicesCert,
@@ -36,9 +38,11 @@ export const getCertifications = (user: User) => {
       isB1EnglishCert ||
       isRespWebDesignCertV9 ||
       isJavascriptCertV9 ||
+      isFrontEndLibsCertV9 ||
       isFoundationalCSharpCertV8 ||
       isPythonCertV9 ||
-      isRelationalDatabaseCertV9,
+      isRelationalDatabaseCertV9 ||
+      isBackEndDevApisCertV9,
     hasLegacyCert:
       isFrontEndCert ||
       isJsAlgoDataStructCert ||
@@ -81,6 +85,11 @@ export const getCertifications = (user: User) => {
         certSlug: Certification.JsV9
       },
       {
+        show: isFrontEndLibsCertV9,
+        title: 'Front End Developer Libraries Certification',
+        certSlug: Certification.FrontEndDevLibsV9
+      },
+      {
         show: isFoundationalCSharpCertV8,
         title: 'Foundational C# with Microsoft Certification',
         certSlug: Certification.FoundationalCSharp
@@ -94,6 +103,11 @@ export const getCertifications = (user: User) => {
         show: isRelationalDatabaseCertV9,
         title: 'Relational Database Certification',
         certSlug: Certification.RelationalDbV9
+      },
+      {
+        show: isBackEndDevApisCertV9,
+        title: 'Back-End Development and APIs Certification',
+        certSlug: Certification.BackEndDevApisV9
       }
     ],
     legacyCerts: [

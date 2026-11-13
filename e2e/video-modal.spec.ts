@@ -1,8 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/isolated-user';
 import translations from '../client/i18n/locales/english/translations.json';
 
+test.use({ userPreset: 'certified' });
+
 const currentUrlPath =
-  '/learn/responsive-web-design/responsive-web-design-principles/create-a-media-query';
+  '/learn/javascript-algorithms-and-data-structures/basic-javascript/replace-loops-using-recursion';
 
 test.describe('Exit Video Modal E2E Test Suite - Mobile', () => {
   test.use({
@@ -12,16 +14,18 @@ test.describe('Exit Video Modal E2E Test Suite - Mobile', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(currentUrlPath);
-    await page.getByTestId('get-help-dropdown').click();
-    await page.getByTestId('watch-a-video').click();
+    await page.getByRole('button', { name: translations.buttons.help }).click();
+    await page.getByTestId('watch-a-video-modal-button').click();
   });
 
   test('Verifies the Correct Rendering of the Video Modal', async ({
     page
   }) => {
-    await expect(
-      page.getByRole('dialog', { name: translations.buttons['watch-video'] })
-    ).toBeVisible();
+    const dialog = page.getByRole('dialog', {
+      name: translations.buttons['watch-video']
+    });
+
+    await expect(dialog).toBeVisible();
     await expect(
       page.getByTestId('video-modal-video-player-iframe')
     ).toBeVisible();
@@ -29,7 +33,7 @@ test.describe('Exit Video Modal E2E Test Suite - Mobile', () => {
       page.getByText(translations.learn['scrimba-tip'])
     ).toBeVisible();
     await expect(
-      page.getByRole('button', { name: translations.buttons.close })
+      dialog.getByRole('button', { name: translations.buttons.close })
     ).toBeVisible();
   });
 
@@ -42,7 +46,7 @@ test.describe('Exit Video Modal E2E Test Suite - Mobile', () => {
 
     await expect(dialog).toBeVisible();
 
-    await page
+    await dialog
       .getByRole('button', { name: translations.buttons.close })
       .click();
 

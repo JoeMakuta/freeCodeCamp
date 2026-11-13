@@ -1,6 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { getTSConfig } from './build';
-import { ChallengeFile } from '@freecodecamp/shared/utils/polyvinyl';
+/**
+ * @vitest-environment jsdom
+ */
+
+import { describe, expect, it, vi } from 'vitest';
+import type { ChallengeFile } from '@freecodecamp/shared/utils/polyvinyl';
+import { buildSourceMap, getTSConfig } from './build';
+
+vi.mock('./typescript-worker-handler.js', () => ({
+  compileTypeScriptCode: () => Promise.resolve('const compiled = true;'),
+  setupTSCompiler: () => Promise.resolve(true)
+}));
 
 describe('getTSConfig', () => {
   it("should return the tsconfig file's contents if it exists", () => {
@@ -32,5 +41,25 @@ describe('getTSConfig', () => {
     expect(() => getTSConfig(challengeFiles)).toThrow(
       'TypeScript challenge must include only one tsconfig.json file'
     );
+  });
+});
+
+describe('buildSourceMap', () => {
+  it('joins source files with newlines', () => {
+    const challengeFiles = [
+      {
+        source: 'html'
+      },
+      {
+        source: 'css'
+      },
+      {
+        source: 'ts'
+      }
+    ];
+
+    const sourceContents = buildSourceMap(challengeFiles)?.contents;
+
+    expect(sourceContents).toEqual('html\ncss\nts');
   });
 });

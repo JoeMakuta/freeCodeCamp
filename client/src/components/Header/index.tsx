@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/unbound-method */
+/* oxlint-disable typescript/no-unsafe-member-access */
+/* oxlint-disable typescript/no-unsafe-call */
+/* oxlint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/unbound-method */
 import React from 'react';
 import { ConnectedProps, connect } from 'react-redux';
 import { createSelector } from 'reselect';
@@ -37,7 +37,7 @@ type Props = PropsFromRedux & {
 
 class Header extends React.Component<Props, { displayMenu: boolean }> {
   menuButtonRef: React.RefObject<HTMLButtonElement>;
-  searchBarRef: React.RefObject<any>;
+  searchBarRef: React.RefObject<HTMLDivElement>;
   static displayName: string;
   constructor(props: Props) {
     super(props);
@@ -61,7 +61,7 @@ class Header extends React.Component<Props, { displayMenu: boolean }> {
       // the search bar should not toggle the menu
       this.searchBarRef.current &&
       !this.searchBarRef.current.contains(eventTarget) &&
-      // don't count clicks on searcn bar inputs reset button
+      // don't count clicks on search bar inputs reset button
       !eventTarget.closest('.ais-SearchBox-reset') &&
       // don't count clicks on disabled elements
       !eventTarget.closest('[aria-disabled="true"]')
@@ -88,11 +88,7 @@ class Header extends React.Component<Props, { displayMenu: boolean }> {
       this.props;
     return (
       <header className='site-header'>
-        <a
-          href='#content-start'
-          className='skip-to-content-button'
-          data-playwright-test-label='header-skip-content'
-        >
+        <a href='#content-start' className='skip-to-content-button'>
           {skipButtonText}
         </a>
         {examInProgress ? (

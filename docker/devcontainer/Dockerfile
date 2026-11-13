@@ -1,7 +1,7 @@
 # =============================================================================
 # BASE - System dependencies, pnpm, mongosh
 # =============================================================================
-FROM node:24-bookworm AS base
+FROM node:26.13.1-bookworm@sha256:b7087bc4d973034b30854b378ba107f9fab622b47514cb7e2592e41b8bab8d49 AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -15,15 +15,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main" > /etc/apt/sources.list.d/mongodb-org-8.0.list \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends mongodb-mongosh \
+    && apt-get install -y --no-install-recommends mongodb-mongosh gh \
     && rm -rf /var/lib/apt/lists/*
 
-# renovate: datasource=npm depName=pnpm
-RUN npm install -g pnpm@10.28.1
+RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
+    npm install -g "pnpm@$(node -p 'require("/tmp/package.json").packageManager.split("@")[1]')"
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
-ENV npm_config_store_dir=/home/node/.local/share/pnpm/store
+ENV pnpm_config_store_dir=/home/node/.local/share/pnpm/store
 
 # =============================================================================
 # BUILDER - Install dependencies and build to populate caches (disposable)
@@ -50,7 +53,7 @@ COPY --chown=node:node tools/scripts/seed-exams/package.json tools/scripts/seed-
 
 COPY --chown=node:node packages/challenge-builder/package.json packages/challenge-builder/
 COPY --chown=node:node packages/challenge-linter/package.json packages/challenge-linter/
-COPY --chown=node:node packages/eslint-config/package.json packages/eslint-config/
+COPY --chown=node:node packages/oxlint-config/package.json packages/oxlint-config/
 COPY --chown=node:node packages/shared/package.json packages/shared/
 
 # Prisma schema needed for api postinstall script (prisma generate)

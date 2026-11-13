@@ -1,7 +1,10 @@
-import { test, expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { test, expect } from './fixtures/isolated-user';
 
 import translations from '../client/i18n/locales/english/translations.json';
 import { clearEditor, focusEditor, getEditors } from './utils/editor';
+
+test.use({ userPreset: 'certified' });
 
 const outputTexts = {
   default: `
@@ -51,14 +54,12 @@ const replaceTextInCodeEditor = async ({
 const runChallengeTest = async (page: Page, isMobile: boolean) => {
   if (isMobile) {
     await page.getByRole('tab', { name: 'Console' }).click();
-    await page.getByText('Run').click();
-  } else {
-    await page
-      .getByRole('button', {
-        name: translations.buttons['check-code']
-      })
-      .click();
   }
+  await page
+    .getByRole('button', {
+      name: translations.buttons['check-code']
+    })
+    .click();
 };
 
 test.describe('For classic challenges', () => {

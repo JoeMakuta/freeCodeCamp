@@ -21,7 +21,6 @@ import ExamResultsModal from '../../SolutionViewer/exam-results-modal';
 import { openModal } from '../../../templates/Challenges/redux/actions';
 import { Link, FullWidthRow } from '../../helpers';
 import { SolutionDisplayWidget } from '../../solution-display-widget';
-import { SuperBlocks } from '@freecodecamp/shared/config/curriculum';
 import TimelinePagination from './timeline-pagination';
 
 const SolutionViewer = Loadable(
@@ -168,7 +167,7 @@ function TimelineInner({
   const challengeData: ChallengeData | null = completedChallenge
     ? {
         ...completedChallenge,
-        // // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        // // oxlint-disable-next-line typescript/no-unsafe-argument
         challengeFiles:
           completedChallenge?.challengeFiles?.map(
             regenerateMissingProperties
@@ -253,7 +252,7 @@ function TimelineInner({
   );
 }
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment,  @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call*/
+/* oxlint-disable typescript/no-unsafe-assignment,  typescript/no-unsafe-return, typescript/no-unsafe-member-access, typescript/no-unsafe-call*/
 function useIdToNameMap(t: TFunction): Map<string, NameMap> {
   const {
     allChallengeNode: { edges }
@@ -299,15 +298,12 @@ function useIdToNameMap(t: TFunction): Map<string, NameMap> {
           // @ts-expect-error Graphql needs typing
           title,
           // @ts-expect-error Graphql needs typing
-          fields: { slug },
-          // @ts-expect-error Graphql needs typing
-          hasEditableBoundaries
+          fields: { slug }
         }
       }
     }) => {
       const blockNameTitle = t(`intro:${superBlock}.blocks.${block}.title`);
-      const shouldAppendBlockNameToTitle =
-        hasEditableBoundaries || superBlock === SuperBlocks.A2English;
+      const shouldAppendBlockNameToTitle = blockNameTitle !== title;
       idToNameMap.set(id, {
         challengeTitle: `${
           shouldAppendBlockNameToTitle ? blockNameTitle + ' - ' : ''
@@ -317,7 +313,7 @@ function useIdToNameMap(t: TFunction): Map<string, NameMap> {
     }
   );
   return idToNameMap;
-  /* eslint-enable */
+  /* oxlint-enable */
 }
 
 const Timeline = (props: TimelineProps): JSX.Element => {
